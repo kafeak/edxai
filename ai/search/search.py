@@ -136,9 +136,9 @@ def genericSearch(problem, valueAlgorithm):
     # EXPAND FROM FRINGE UNTIL GOAL HAS BEEN FOUND
     while 1:
         if print_my_debug_messages >= 1:
-            print "Fringe:  (size; ", len(fringe.heap), ", paths in reverse step order)"
-            for value, order, path in fringe.heap:
-                print [[x[0] for x in path.list], value, order]
+            print "==FRINGE size",len(fringe.heap)
+            for value, number, path in fringe.heap:
+                print [[x[0] for x in reversed(path.list)], value, number]
         # Only expand non-visited states.
         # Test for goal before expansion.
         expandee_found = False
@@ -159,7 +159,7 @@ def genericSearch(problem, valueAlgorithm):
         if goal:
             break
         if print_my_debug_messages >= 1:
-            print "Expanding ", expandee_state, " from ", expandee.list
+            print "<-FRINGE", expandee_state, " from ", [i for i in reversed(expandee.list)]
         expanded_path = []
         while expandee.list:
             expanded_path.append(expandee.pop())
@@ -178,27 +178,23 @@ def genericSearch(problem, valueAlgorithm):
             for node in expanded_path:
                 new_path.push(node)
             new_path.push(fresh_node)
-            """if print_my_debug_messages >= 0:
-                print "Goal test: ", fresh_node[0], " ? ", problem.isGoalState(fresh_node[0])
-            if problem.isGoalState(fresh_node[0]):
-                goal = new_path
-                break"""
+            pqvalue = valueAlgorithm(new_path)
             if print_my_debug_messages >= 1:
-                print "Pushing ", new_path.list, " to fringe with Priority Queue value of ", valueAlgorithm(new_path)
-            fringe.push(new_path, valueAlgorithm(new_path))
+                print "++FRINGE",[i for i in reversed(new_path.list)],"pqvalue",pqvalue
+            fringe.push(new_path, pqvalue)
 
         if goal:
             break
 
     path_to_goal = pathifyQueue(goal)
     if print_my_debug_messages >= 0:
-        print "Path found: ", path_to_goal
+        print "Path found:", path_to_goal
     return path_to_goal
 
 
 def depthFirstSearch(problem):
     return genericSearch(problem,
-                         valueAlgorithm=lambda path: 9999999-len(path.list))
+                         valueAlgorithm=lambda path: -len(path.list))
 
 
 def breadthFirstSearch(problem):
@@ -224,71 +220,26 @@ def nullHeuristic(state, problem=None):
 
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-
-    def pathifyQueue(path):
-        steps = []
-        while path.list:
-            node = path.pop()
-            if node[1] != "start":
-                steps.append(node[1])
-        return steps
-
     def fCost(path):
+        """
+        logi = 0
+        logstr = "  A*fCost path: "
+        for s,a,f in reversed(path.list):
+            logi += 1
+            logstr += s
+            if logi != len(path.list):
+                logstr += " -> "
+        print logstr
+        """
         cost = 0
-        for (st, act, fcost) in path.list[:-1]:
+        for (st, act, fcost) in reversed(path.list):
             cost += fcost
-        current_state = path.list[-1][0]
+            #print "  A*fCost step cost",st,":",fcost,"(+=",cost,")"
+        current_state = path.list[0][0]
         cost += heuristic(current_state, problem)
+        #print "  A*fCost heuristic",current_state,":",heuristic(current_state, problem),"+=",cost,"total"
         return cost
-
-    fringe = util.PriorityQueue()
-    visited = []
-    start_state = problem.getStartState()
-    # ignite the burn
-    visited.append(start_state)
-    node = [start_state, "start", 0]
-    fire = util.Queue()
-    fire.push(node)
-    fringe.push(fire, 0)
-
-    # iteration is the expansion of a path from the fringe
-    while 1:
-        # expand the lowest value from fringe
-        goal = False
-        expandee = fringe.pop()
-
-        for (st, act, fcost) in expandee.list:
-            if problem.isGoalState(st):
-                goal = expandee
-        if goal:
-            break
-
-        expanded_path = []
-        while expandee.list:
-            expanded_path.append(expandee.pop())
-        # print [p[0] for p in expanded_path]
-        expanded_state = expanded_path[-1][0]
-        visited.append(expanded_state)
-        successors = util.Stack()
-        for node in problem.getSuccessors(expanded_state):
-            # print node
-            successors.push(node)
-
-        while successors.list:
-            fresh_node = successors.pop()
-            if fresh_node[0] in visited:
-                continue
-            new_path = util.Queue()
-            for node in expanded_path:
-                new_path.push(node)
-            new_path.push(fresh_node)
-            fringe.push(new_path, fCost(new_path))
-            if problem.isGoalState(fresh_node[0]):
-                print "Goal found but not expanded yet."
-
-    path_to_goal = pathifyQueue(goal)
-    print "Path found: ", path_to_goal
-    return path_to_goal
+    return genericSearch(problem, valueAlgorithm=fCost)
 
 
 # Abbreviations
